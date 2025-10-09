@@ -1,9 +1,10 @@
 from collections import deque
 from recipes import recipes
 from collections import deque, defaultdict
+from threading import Semaphore
 tasks={}
 deps = defaultdict(list)
-rev_deps=defaultdict(list)from threading import Semaphore
+rev_deps=defaultdict(list)
 
 for recipe_name, info in recipes.items():
     for task_name, guide in info["tasks"].items():
@@ -59,12 +60,12 @@ stove = Semaphore(3)
 toaster = Semaphore(1)
 fryer = Semaphore(2)
 
+def RecipeScheduler():
+    while ready or finish_ready:
+        sorted_ready = sorted(ready, )
+        new_ready = deque()
+        scheduled = False
 
-while ready or finish_ready:
-    sorted_ready = sorted(ready, )
-    new_ready = deque()
-    scheduled = False
-
-    for t in sorted_ready:
-        if t["resource"]
+        for t in sorted_ready:
+            if t["resource"]
 
