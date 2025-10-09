@@ -2,6 +2,9 @@ from collections import deque
 from recipes import recipes
 from collections import deque, defaultdict
 from threading import Semaphore
+import heapq
+
+
 tasks={}
 deps = defaultdict(list)
 rev_deps=defaultdict(list)
@@ -49,9 +52,9 @@ print("\nLongest remaining path\n")
 memo = find_longest_path()
 print(memo)
 
-        
+    
 
-        
+
         
 #Resources Initialization
 countertop = Semaphore(5)
@@ -61,11 +64,37 @@ toaster = Semaphore(1)
 fryer = Semaphore(2)
 
 def RecipeScheduler():
+    schedule = {}
+    finish_ready = []
+    time = 0
+    
     while ready or finish_ready:
         sorted_ready = sorted(ready, )
         new_ready = deque()
         scheduled = False
 
         for t in sorted_ready:
-            if t["resource"]
+            if t["resource"].acquire(blocking = True):
+                heapq.heappush(finish_ready, (time + t["duration"], t))
+                schedule[t] = (time, time + t["duration"])
+                scheduled = True
+            else:
+                new_ready.append(t)
+        
+        ready = new_ready
+
+        if not scheduled:
+            if not finish_ready:
+                break
+            next_finish, done_task = heapq.heappop(finish_ready)
+            time = next_finish
+            done_task["resource"].release()
+            
+            # Update indegree of dependencies for completed task
+            for child in deps[done_task]:
+                indegree[child] -= 1
+                if indegree[child] == 0:
+                    ready.append(child)
+        else:
+            continue 
 
