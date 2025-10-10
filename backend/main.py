@@ -57,7 +57,7 @@ print()
 
                                 #list comprehension for creating ready Q
 #Resources Initialization
-countertop = Semaphore(5)
+countertop = Semaphore(1)
 grill = Semaphore(1)
 stove = Semaphore(3)
 toaster = Semaphore(1)
@@ -90,12 +90,12 @@ while ready or finish_ready:
     scheduled = False
 
     for t in sorted_ready:
-        if Resources[sorted_ready[t]["resource"]].acquire(blocking = True):
+        if Resources[sorted_ready[t]["resource"]].acquire(blocking = False):
             heapq.heappush(finish_ready, (time + sorted_ready[t]["duration"], t, sorted_ready[t]))
             schedule[t] = (time, time + sorted_ready[t]["duration"])
             scheduled = True
         else:
-            new_ready.append(sorted_ready[t])
+            new_ready[t] = sorted_ready[t]
     
     # print("finish_ready")
     # print(finish_ready)
