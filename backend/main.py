@@ -57,7 +57,7 @@ print()
 
                                 #list comprehension for creating ready Q
 #Resources Initialization
-countertop = Semaphore(1)
+countertop = Semaphore(5)
 grill = Semaphore(1)
 stove = Semaphore(3)
 toaster = Semaphore(1)
