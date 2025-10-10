@@ -55,46 +55,75 @@ print(memo)
     
 
 
-        
+                                #list comprehension for creating ready Q
 #Resources Initialization
 countertop = Semaphore(5)
 grill = Semaphore(1)
 stove = Semaphore(3)
 toaster = Semaphore(1)
 fryer = Semaphore(2)
+Resources = {"countertop": countertop, "grill": grill, "stove": stove, "toaster": toaster, "fryer": fryer}
 
-def RecipeScheduler():
-    schedule = {}
-    finish_ready = []
-    time = 0
-    
-    while ready or finish_ready:
-        sorted_ready = sorted(ready, )
-        new_ready = deque()
-        scheduled = False
+print("--------Resource Test")
+print(Resources["countertop"])
+print()
 
-        for t in sorted_ready:
-            if t["resource"].acquire(blocking = True):
-                heapq.heappush(finish_ready, (time + t["duration"], t))
-                schedule[t] = (time, time + t["duration"])
-                scheduled = True
-            else:
-                new_ready.append(t)
-        
-        ready = new_ready
+schedule = {}
+ready = {t:tasks[t] for t in indegree if indegree[t] == 0}
+print("Ready")
+print(ready)
+print()
+finish_ready = []
+time = 0
 
-        if not scheduled:
-            if not finish_ready:
-                break
-            next_finish, done_task = heapq.heappop(finish_ready)
-            time = next_finish
-            done_task["resource"].release()
-            
-            # Update indegree of dependencies for completed task
-            for child in deps[done_task]:
-                indegree[child] -= 1
-                if indegree[child] == 0:
-                    ready.append(child)
+while ready or finish_ready:
+    sorted_ready = dict(sorted(ready.items(), key = lambda t : -t[1]["duration"]))        #Sorting using immediate duration for now, will change to longest path
+    print("Sorted Ready")
+    print(sorted_ready)
+    print()
+    new_ready = {}
+    scheduled = False
+
+    for t in sorted_ready:
+        if Resources[sorted_ready[t]["resource"]].acquire(blocking = True):
+            heapq.heappush(finish_ready, (time + sorted_ready[t]["duration"], t, sorted_ready[t]))
+            schedule[t] = (time, time + sorted_ready[t]["duration"])
+            scheduled = True
         else:
-            continue 
+            new_ready.append(sorted_ready[t])
+    
+    print("finish_ready")
+    print(finish_ready)
+    print()
+    
+    ready = new_ready
+    print("new_ready")
+    print(new_ready)
+    print()
+    
+    print("Schedule")
+    print(schedule)
+    print()
+
+    if not scheduled:
+        if not finish_ready:
+            break
+        next_finish, done_task_name, done_task = heapq.heappop(finish_ready)
+        print("done task")
+        print(done_task)
+        print()
+        time = next_finish
+        Resources[done_task["resource"]].release()
+        
+        # Update indegree of dependencies for completed task
+        for child in deps[done_task]:
+            indegree[child] -= 1
+            if indegree[child] == 0:
+                ready.append(child)
+    else:
+        continue 
+
+    print("time")
+    print(time)
+    print()
 
