@@ -1,7 +1,7 @@
 recipes={
     "burger":{
         "tasks":{
-            "t1":{"name":"form_patties", "duration":2, "resource":"countertop"},
+            "t1":{"name":"form_patties", "duration":2, "involvement_time":1,"resource":"countertop"},
             "t2":{"name":"grill_patties", "duration":6, "resource":"grill"},
             "t3":{"name":"toast_buns", "duration":1, "resource":"toaster"},
             "t4":{"name":"assemble", "duration":1, "resource":"countertop"}
