@@ -3,6 +3,21 @@ import { Link } from 'react-router-dom'
 import api from '../services/api'
 import './RecipeBrowser.css'
 
+const recipeIcons = {
+  burger: '🍔',
+  fries: '🍟',
+  pasta: '🍝',
+  salad: '🥗',
+  chicken: '🍗',
+  soup: '🍲',
+  sandwich: '🥪',
+  pizza: '🍕',
+  tacos: '🌮',
+  rice_bowl: '🍚',
+  stir_fry: '🍜',
+  nachos: '🧀'
+}
+
 function RecipeBrowser() {
   const [recipes, setRecipes] = useState({})
   const [loading, setLoading] = useState(true)
@@ -48,7 +63,7 @@ function RecipeBrowser() {
               className="recipe-card"
             >
               <div className="recipe-card-icon">
-                {recipeName === 'burger' ? '🍔' : '🍟'}
+                {recipeIcons[recipeName] || '🍽️'}
               </div>
               <div className="recipe-card-content">
                 <h2 className="recipe-card-title">

@@ -1,14 +1,33 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
+import { scheduleRecipes } from '../utils/scheduler'
 import './TaskScheduler.css'
 
-function TaskScheduler() {
+const recipeColors = {
+  burger: '#667eea',
+  fries: '#f5576c',
+  pasta: '#4facfe',
+  salad: '#43e97b',
+  chicken: '#fa709a',
+  soup: '#fee140',
+  sandwich: '#30cfd0',
+  pizza: '#ff6b6b',
+  tacos: '#ffa94d',
+  rice_bowl: '#51cf66',
+  stir_fry: '#339af0',
+  nachos: '#ffd43b'
+}
+
+function TaskScheduler({ sessionData }) {
+  const navigate = useNavigate()
   const [schedule, setSchedule] = useState([])
-  const [loading, setLoading] = useState(true)
   const [recipes, setRecipes] = useState({})
+  const [selectedRecipes, setSelectedRecipes] = useState([])
+  const [selectedTask, setSelectedTask] = useState(null)
 
   useEffect(() => {
-    // Get recipes for task names
+    // Get recipes
     try {
       const recipesData = api.getMockRecipes()
       setRecipes(recipesData)
@@ -16,35 +35,32 @@ function TaskScheduler() {
       console.error('Error loading recipes:', error)
     }
 
-    // Try to fetch schedule from API
-    api.getSchedule()
-      .then(response => {
-        setSchedule(response.data)
-        setLoading(false)
-      })
-      .catch(() => {
-        // Generate mock schedule data
-        generateMockSchedule()
-        setLoading(false)
-      })
-  }, [])
+    // If session data exists, use it; otherwise show empty state
+    if (sessionData && sessionData.selectedRecipes) {
+      setSelectedRecipes(sessionData.selectedRecipes)
+      const recipesData = api.getMockRecipes()
+      const generatedSchedule = scheduleRecipes(recipesData, sessionData.selectedRecipes)
+      setSchedule(generatedSchedule)
+    }
+  }, [sessionData])
 
-  const generateMockSchedule = () => {
-    // Mock schedule based on the scheduling algorithm
-    const mockSchedule = [
-      { taskId: 'burger_t1', start: 0, end: 2, resource: 'countertop', recipe: 'burger', taskName: 'form_patties' },
-      { taskId: 'fries_f1', start: 0, end: 2, resource: 'countertop', recipe: 'fries', taskName: 'cut_potatoes' },
-      { taskId: 'burger_t3', start: 2, end: 3, resource: 'toaster', recipe: 'burger', taskName: 'toast_buns' },
-      { taskId: 'burger_t2', start: 2, end: 8, resource: 'grill', recipe: 'burger', taskName: 'grill_patties' },
-      { taskId: 'fries_f2', start: 2, end: 6, resource: 'fryer', recipe: 'fries', taskName: 'fry_potatoes' },
-      { taskId: 'fries_f3', start: 6, end: 7, resource: 'countertop', recipe: 'fries', taskName: 'salt_fries' },
-      { taskId: 'burger_t4', start: 8, end: 9, resource: 'countertop', recipe: 'burger', taskName: 'assemble' }
-    ]
-    setSchedule(mockSchedule)
+  const handleStartNewSession = () => {
+    navigate('/select')
   }
 
-  if (loading) {
-    return <div className="loading">Loading schedule...</div>
+  if (!schedule || schedule.length === 0) {
+    return (
+      <div className="task-scheduler">
+        <div className="empty-scheduler">
+          <div className="empty-icon">📋</div>
+          <h1>No Active Session</h1>
+          <p>Select recipes to start a cooking session</p>
+          <button className="start-session-btn" onClick={handleStartNewSession}>
+            Start New Session
+          </button>
+        </div>
+      </div>
+    )
   }
 
   const maxTime = Math.max(...schedule.map(task => task.end), 0)
@@ -63,8 +79,12 @@ function TaskScheduler() {
   return (
     <div className="task-scheduler">
       <div className="scheduler-header">
-        <h1>Task Scheduler</h1>
-        <p className="subtitle">Visual timeline of all cooking tasks</p>
+        <h1>Optimized Cooking Schedule</h1>
+        <p className="subtitle">
+          {selectedRecipes.length > 0 && 
+            `Cooking: ${selectedRecipes.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ')}`
+          }
+        </p>
       </div>
 
       <div className="timeline-container">
@@ -99,14 +119,22 @@ function TaskScheduler() {
 
                   return (
                     <div
-                      key={task.taskId}
-                      className={`task-block task-${task.recipe}`}
+                      key={task.taskId || `${task.recipe}_${task.taskName}`}
+                      className={`task-block ${selectedTask?.taskId === task.taskId ? 'selected' : ''}`}
                       style={{
                         left: `${left}%`,
                         width: `${width}%`,
-                        minWidth: `${width > 5 ? width : 5}%`
+                        minWidth: `${width > 5 ? width : 5}%`,
+                        backgroundColor: recipeColors[task.recipe] || '#667eea',
+                        outline: selectedTask?.taskId === task.taskId ? '4px solid #fff' : 'none',
+                        outlineOffset: '2px',
+                        zIndex: selectedTask?.taskId === task.taskId ? '20' : '1'
                       }}
                       title={`${task.recipe} - ${task.taskName}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedTask(task)
+                      }}
                     >
                       <div className="task-block-content">
                         <div className="task-block-recipe">{task.recipe}</div>
@@ -137,8 +165,67 @@ function TaskScheduler() {
             <span className="stat-label">Resources Used:</span>
             <span className="stat-value">{Object.keys(tasksByResource).length}</span>
           </div>
+          <div className="summary-stat">
+            <span className="stat-label">Recipes:</span>
+            <span className="stat-value">{selectedRecipes.length}</span>
+          </div>
         </div>
       </div>
+
+      <div className="scheduler-actions">
+        <button className="new-session-btn" onClick={handleStartNewSession}>
+          Start New Session
+        </button>
+      </div>
+
+      {selectedTask && (
+        <div className="task-detail-modal" onClick={() => setSelectedTask(null)}>
+          <div className="task-detail-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Task Details</h2>
+              <button className="close-modal" onClick={() => setSelectedTask(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="detail-section">
+                <div className="detail-row">
+                  <span className="detail-label">Recipe:</span>
+                  <span className="detail-value" style={{ color: recipeColors[selectedTask.recipe] }}>
+                    {selectedTask.recipe.charAt(0).toUpperCase() + selectedTask.recipe.slice(1)}
+                  </span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Task:</span>
+                  <span className="detail-value">
+                    {selectedTask.taskName.replace(/_/g, ' ').split(' ').map(word => 
+                      word.charAt(0).toUpperCase() + word.slice(1)
+                    ).join(' ')}
+                  </span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Resource:</span>
+                  <span className="detail-value">{selectedTask.resource}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Duration:</span>
+                  <span className="detail-value">{selectedTask.duration} minutes</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Start Time:</span>
+                  <span className="detail-value">{selectedTask.start} minutes</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">End Time:</span>
+                  <span className="detail-value">{selectedTask.end} minutes</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Time Range:</span>
+                  <span className="detail-value">{selectedTask.start} - {selectedTask.end} minutes</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

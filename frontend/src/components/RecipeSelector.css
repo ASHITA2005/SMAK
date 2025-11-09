@@ -1,0 +1,170 @@
+.recipe-selector {
+  animation: fadeIn 0.5s ease-in;
+  color: white;
+}
+
+.selector-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.selector-header h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.recipes-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.recipe-select-card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  border: 3px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.recipe-select-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.recipe-select-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.recipe-select-card:hover::before {
+  transform: scaleX(1);
+}
+
+.recipe-select-card.selected {
+  border-color: #667eea;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+}
+
+.recipe-select-card.selected::before {
+  transform: scaleX(1);
+}
+
+.select-card-checkbox {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+.checkbox {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #667eea;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  color: white;
+  font-weight: bold;
+  font-size: 1.2rem;
+  transition: all 0.2s;
+}
+
+.checkbox.checked {
+  background: #667eea;
+  transform: scale(1.1);
+}
+
+.select-card-icon {
+  font-size: 4rem;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+  margin-top: 1rem;
+}
+
+.select-card-content {
+  text-align: center;
+  width: 100%;
+}
+
+.select-card-content h3 {
+  color: #333;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.select-card-stats {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.selector-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2rem;
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.selection-summary {
+  font-size: 1.2rem;
+}
+
+.no-selection {
+  opacity: 0.7;
+}
+
+.selection-count {
+  font-weight: 600;
+}
+
+.start-session-button {
+  padding: 1rem 3rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.start-session-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.start-session-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.start-session-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+

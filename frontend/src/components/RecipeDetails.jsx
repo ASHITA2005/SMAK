@@ -3,6 +3,21 @@ import { useParams, Link } from 'react-router-dom'
 import api from '../services/api'
 import './RecipeDetails.css'
 
+const recipeIcons = {
+  burger: '🍔',
+  fries: '🍟',
+  pasta: '🍝',
+  salad: '🥗',
+  chicken: '🍗',
+  soup: '🍲',
+  sandwich: '🥪',
+  pizza: '🍕',
+  tacos: '🌮',
+  rice_bowl: '🍚',
+  stir_fry: '🍜',
+  nachos: '🧀'
+}
+
 function RecipeDetails() {
   const { recipeName } = useParams()
   const [recipe, setRecipe] = useState(null)
@@ -61,7 +76,7 @@ function RecipeDetails() {
 
       <div className="details-header">
         <div className="recipe-icon-large">
-          {recipeName === 'burger' ? '🍔' : '🍟'}
+          {recipeIcons[recipeName] || '🍽️'}
         </div>
         <div>
           <h1>{recipeName.charAt(0).toUpperCase() + recipeName.slice(1)}</h1>
