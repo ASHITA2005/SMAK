@@ -15,6 +15,47 @@
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+.monitor-header .subtitle {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.time-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  font-size: 1.1rem;
+}
+
+.time-label {
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.time-value {
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: #667eea;
+}
+
+.time-separator {
+  opacity: 0.6;
+  margin: 0 0.25rem;
+}
+
+.time-total {
+  opacity: 0.8;
+  font-weight: 500;
+}
+
 .resources-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

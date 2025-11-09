@@ -1,24 +1,127 @@
 import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import api from '../services/api'
+import { scheduleRecipes } from '../utils/scheduler'
 import './ResourceMonitor.css'
 
-function ResourceMonitor() {
+function ResourceMonitor({ sessionData: propSessionData }) {
+  const location = useLocation()
   const [resources, setResources] = useState({})
   const [loading, setLoading] = useState(true)
+  const [currentTime, setCurrentTime] = useState(0)
+
+  // Resource limits
+  const resourceLimits = {
+    countertop: 5,
+    grill: 1,
+    stove: 3,
+    toaster: 1,
+    fryer: 2
+  }
 
   useEffect(() => {
-    // Try to fetch from API, fall back to mock data
+    // Calculate resource usage from schedule
+    const calculateResourceUsage = () => {
+      // Get session data from props, location state, or session storage
+      let sessionData = propSessionData || location.state?.sessionData
+      if (!sessionData) {
+        // Try to get from session storage
+        const stored = sessionStorage.getItem('sessionData')
+        if (stored) {
+          try {
+            sessionData = JSON.parse(stored)
+          } catch (e) {
+            sessionData = null
+          }
+        }
+      }
+
+      if (!sessionData || !sessionData.selectedRecipes) {
+        // No active session, show all resources as available
+        const defaultResources = {}
+        Object.keys(resourceLimits).forEach(resource => {
+          defaultResources[resource] = {
+            total: resourceLimits[resource],
+            available: resourceLimits[resource]
+          }
+        })
+        setResources(defaultResources)
+        setLoading(false)
+        return
+      }
+
+      // Generate schedule from selected recipes
+      const recipesData = api.getMockRecipes()
+      const schedule = scheduleRecipes(recipesData, sessionData.selectedRecipes)
+
+      // Calculate current resource usage at currentTime
+      const resourceUsage = {}
+      Object.keys(resourceLimits).forEach(resource => {
+        resourceUsage[resource] = {
+          total: resourceLimits[resource],
+          used: 0
+        }
+      })
+
+      // Count tasks that are currently active (start <= currentTime < end)
+      schedule.forEach(task => {
+        if (task.start <= currentTime && currentTime < task.end) {
+          if (resourceUsage[task.resource]) {
+            resourceUsage[task.resource].used++
+          }
+        }
+      })
+
+      // Calculate available resources
+      const resourceStatus = {}
+      Object.keys(resourceUsage).forEach(resource => {
+        resourceStatus[resource] = {
+          total: resourceUsage[resource].total,
+          available: Math.max(0, resourceUsage[resource].total - resourceUsage[resource].used)
+        }
+      })
+
+      setResources(resourceStatus)
+      setLoading(false)
+    }
+
+    // Try to fetch from API first, fall back to calculation
     api.getResources()
       .then(response => {
         setResources(response.data)
         setLoading(false)
       })
       .catch(() => {
-        // Use mock data if API is not available
-        setResources(api.getMockResources())
-        setLoading(false)
+        // Calculate from schedule
+        calculateResourceUsage()
       })
-  }, [])
+  }, [currentTime, propSessionData, location.state])
+
+  // Update current time periodically to simulate real-time monitoring
+  // Only update if there's an active session
+  useEffect(() => {
+    const sessionData = propSessionData || location.state?.sessionData || 
+      (() => {
+        const stored = sessionStorage.getItem('sessionData')
+        return stored ? JSON.parse(stored) : null
+      })()
+    
+    if (!sessionData || !sessionData.selectedRecipes) {
+      return // No active session, don't update time
+    }
+
+    const interval = setInterval(() => {
+      setCurrentTime(prev => {
+        // Get max time from schedule to stop at the end
+        const recipesData = api.getMockRecipes()
+        const schedule = scheduleRecipes(recipesData, sessionData.selectedRecipes)
+        const maxTime = schedule.length > 0 ? Math.max(...schedule.map(task => task.end)) : 0
+        return prev < maxTime ? prev + 1 : prev
+      })
+    }, 1000) // Update every second
+
+    return () => clearInterval(interval)
+  }, [propSessionData, location.state])
 
   if (loading) {
     return <div className="loading">Loading resources...</div>
@@ -45,6 +148,27 @@ function ResourceMonitor() {
       <div className="monitor-header">
         <h1>Resource Monitor</h1>
         <p className="subtitle">Real-time kitchen resource availability</p>
+        {(() => {
+          const sessionData = propSessionData || location.state?.sessionData || 
+            (() => {
+              const stored = sessionStorage.getItem('sessionData')
+              return stored ? JSON.parse(stored) : null
+            })()
+          if (sessionData && sessionData.selectedRecipes) {
+            const recipesData = api.getMockRecipes()
+            const schedule = scheduleRecipes(recipesData, sessionData.selectedRecipes)
+            const maxTime = schedule.length > 0 ? Math.max(...schedule.map(task => task.end)) : 0
+            return (
+              <div className="time-display">
+                <span className="time-label">Current Time:</span>
+                <span className="time-value">{currentTime} min</span>
+                <span className="time-separator">/</span>
+                <span className="time-total">{maxTime} min</span>
+              </div>
+            )
+          }
+          return null
+        })()}
       </div>
 
       <div className="resources-grid">

@@ -26,7 +26,10 @@ function AppContent() {
   const navigate = useNavigate()
 
   const handleStartSession = (selectedRecipes) => {
-    setSessionData({ selectedRecipes, timestamp: Date.now() })
+    const newSessionData = { selectedRecipes, timestamp: Date.now() }
+    setSessionData(newSessionData)
+    // Store in sessionStorage so ResourceMonitor can access it
+    sessionStorage.setItem('sessionData', JSON.stringify(newSessionData))
   }
 
   const handleLogout = async () => {
@@ -66,7 +69,7 @@ function AppContent() {
           <Route path="/select" element={<ProtectedRoute><RecipeSelectorWrapper onStartSession={handleStartSession} /></ProtectedRoute>} />
           <Route path="/recipe/:recipeName" element={<ProtectedRoute><RecipeDetails /></ProtectedRoute>} />
           <Route path="/scheduler" element={<ProtectedRoute><TaskSchedulerWrapper sessionData={sessionData} /></ProtectedRoute>} />
-          <Route path="/resources" element={<ProtectedRoute><ResourceMonitor /></ProtectedRoute>} />
+          <Route path="/resources" element={<ProtectedRoute><ResourceMonitor sessionData={sessionData} /></ProtectedRoute>} />
         </Routes>
       </main>
     </div>
