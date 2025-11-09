@@ -161,6 +161,7 @@ function RecipeDetails() {
 
       <div className="dependency-graph-section">
         <h2>Task Flow</h2>
+        <p className="flow-description">Tasks are shown with arrows indicating dependencies. Tasks with no dependencies can start immediately.</p>
         <div className="dependency-visualization">
           {taskNames.map(taskId => {
             const dependencies = getDependencies(taskId)
@@ -168,20 +169,28 @@ function RecipeDetails() {
             
             return (
               <div key={taskId} className="flow-node">
-                <div className={`flow-task-card resource-${task.resource}`}>
-                  <div className="flow-task-name">{task.name.replace(/_/g, ' ')}</div>
-                  <div className="flow-task-time">{task.duration}min</div>
-                </div>
-                {dependencies.length > 0 && (
-                  <div className="flow-arrows">
+                {dependencies.length > 0 ? (
+                  <div className="flow-arrows-container">
                     {dependencies.map(dep => (
-                      <div key={dep} className="flow-arrow">
-                        <div className="arrow-line"></div>
-                        <div className="arrow-head"></div>
+                      <div key={dep} className="flow-arrow-wrapper">
+                        <div className="flow-arrow">
+                          <div className="arrow-line"></div>
+                          <div className="arrow-head"></div>
+                        </div>
+                        <span className="arrow-label">{dep}</span>
                       </div>
                     ))}
                   </div>
+                ) : (
+                  <div className="flow-arrows-container">
+                    <span className="no-deps-label">No dependencies</span>
+                  </div>
                 )}
+                <div className={`flow-task-card resource-${task.resource}`}>
+                  <div className="flow-task-name">{task.name.replace(/_/g, ' ')}</div>
+                  <div className="flow-task-time">{task.duration}min</div>
+                  <div className="flow-task-id">{taskId}</div>
+                </div>
               </div>
             )
           })}
