@@ -25,6 +25,8 @@ function TaskScheduler({ sessionData }) {
   const [recipes, setRecipes] = useState({})
   const [selectedRecipes, setSelectedRecipes] = useState([])
   const [selectedTask, setSelectedTask] = useState(null)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
 
   useEffect(() => {
     // Get recipes
@@ -41,8 +43,28 @@ function TaskScheduler({ sessionData }) {
       const recipesData = api.getMockRecipes()
       const generatedSchedule = scheduleRecipes(recipesData, sessionData.selectedRecipes)
       setSchedule(generatedSchedule)
+      setCurrentTime(0) // Reset time when new session starts
+      setIsPlaying(false) // Stop playback
     }
   }, [sessionData])
+
+  // Auto-play timer
+  useEffect(() => {
+    if (!isPlaying || !schedule || schedule.length === 0) return
+
+    const maxTime = Math.max(...schedule.map(task => task.end), 0)
+    const interval = setInterval(() => {
+      setCurrentTime(prev => {
+        if (prev >= maxTime) {
+          setIsPlaying(false)
+          return maxTime
+        }
+        return prev + 1
+      })
+    }, 1000) // 1 second = 1 simulated minute
+
+    return () => clearInterval(interval)
+  }, [isPlaying, schedule])
 
   const handleStartNewSession = () => {
     navigate('/select')
@@ -74,6 +96,43 @@ function TaskScheduler({ sessionData }) {
     return acc
   }, {})
 
+  // Function to assign layers to overlapping tasks
+  const assignLayers = (tasks) => {
+    if (!tasks || tasks.length === 0) return []
+    
+    // Sort tasks by start time
+    const sortedTasks = [...tasks].sort((a, b) => a.start - b.start)
+    
+    // Assign layer to each task
+    const layers = []
+    sortedTasks.forEach(task => {
+      let layer = 0
+      // Find the first available layer that doesn't overlap with existing tasks
+      while (layers.some(t => 
+        t.layer === layer && 
+        !(task.end <= t.task.start || task.start >= t.task.end)
+      )) {
+        layer++
+      }
+      layers.push({ task, layer })
+    })
+    
+    return layers
+  }
+
+  // Calculate maximum layers needed for each resource
+  const getMaxLayers = (resource) => {
+    const layers = assignLayers(tasksByResource[resource])
+    return layers.length > 0 ? Math.max(...layers.map(l => l.layer)) + 1 : 1
+  }
+
+  // Get task state based on current time
+  const getTaskState = (task) => {
+    if (task.end <= currentTime) return 'completed'
+    if (task.start <= currentTime && currentTime < task.end) return 'active'
+    return 'future'
+  }
+
   const resources = ['countertop', 'grill', 'stove', 'toaster', 'fryer']
 
   return (
@@ -87,6 +146,53 @@ function TaskScheduler({ sessionData }) {
         </p>
       </div>
 
+      <div className="timeline-controls">
+        <div className="controls-container">
+          <div className="time-controls">
+            <button 
+              className={`play-pause-btn ${isPlaying ? 'pause' : 'play'}`}
+              onClick={() => {
+                if (currentTime >= maxTime) {
+                  setCurrentTime(0)
+                }
+                setIsPlaying(!isPlaying)
+              }}
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? '⏸' : '▶'}
+            </button>
+            <button
+              className="reset-btn"
+              onClick={() => {
+                setCurrentTime(0)
+                setIsPlaying(false)
+              }}
+              title="Reset to start"
+            >
+              ⏮
+            </button>
+            <div className="time-slider-container">
+              <input
+                type="range"
+                min="0"
+                max={maxTime}
+                value={currentTime}
+                onChange={(e) => {
+                  setCurrentTime(Number(e.target.value))
+                  setIsPlaying(false) // Pause when manually scrubbing
+                }}
+                className="time-slider"
+              />
+              <div className="time-display">
+                <span className="current-time">{currentTime}</span>
+                <span className="time-separator">/</span>
+                <span className="max-time">{maxTime} min</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="timeline-container">
         <div className="timeline-header">
           <div className="resource-column-header">Resource</div>
@@ -96,57 +202,79 @@ function TaskScheduler({ sessionData }) {
                 <span className="time-label">{i}</span>
               </div>
             ))}
+            {/* Current time indicator line */}
+            <div 
+              className="current-time-indicator"
+              style={{ left: `${(currentTime / maxTime) * 100}%` }}
+            />
           </div>
         </div>
 
         <div className="timeline-resources">
-          {resources.map(resource => (
-            <div key={resource} className="resource-row">
-              <div className="resource-label">
-                <span className={`resource-icon resource-${resource}`}>
-                  {resource === 'countertop' && '🧰'}
-                  {resource === 'grill' && '🔥'}
-                  {resource === 'stove' && '🔥'}
-                  {resource === 'toaster' && '🍞'}
-                  {resource === 'fryer' && '🍟'}
-                </span>
-                <span className="resource-name">{resource}</span>
-              </div>
-              <div className="timeline-track">
-                {tasksByResource[resource]?.map(task => {
-                  const left = (task.start / maxTime) * 100
-                  const width = ((task.end - task.start) / maxTime) * 100
+          {resources.map(resource => {
+            const maxLayers = getMaxLayers(resource)
+            const taskLayers = assignLayers(tasksByResource[resource])
+            const trackHeight = 60 + (maxLayers - 1) * 60
+            
+            return (
+              <div key={resource} className="resource-row">
+                <div className="resource-label">
+                  <span className={`resource-icon resource-${resource}`}>
+                    {resource === 'countertop' && '🧰'}
+                    {resource === 'grill' && '🔥'}
+                    {resource === 'stove' && '🔥'}
+                    {resource === 'toaster' && '🍞'}
+                    {resource === 'fryer' && '🍟'}
+                  </span>
+                  <span className="resource-name">{resource}</span>
+                </div>
+                <div 
+                  className="timeline-track" 
+                  style={{ height: `${trackHeight}px` }}
+                >
+                  {/* Current time indicator line for this track */}
+                  <div 
+                    className="current-time-line"
+                    style={{ left: `${(currentTime / maxTime) * 100}%` }}
+                  />
+                  {taskLayers.map(({ task, layer }) => {
+                    const left = (task.start / maxTime) * 100
+                    const width = ((task.end - task.start) / maxTime) * 100
+                    const top = 8 + (layer * 60)
+                    const taskState = getTaskState(task)
 
-                  return (
-                    <div
-                      key={task.taskId || `${task.recipe}_${task.taskName}`}
-                      className={`task-block ${selectedTask?.taskId === task.taskId ? 'selected' : ''}`}
-                      style={{
-                        left: `${left}%`,
-                        width: `${width}%`,
-                        minWidth: `${width > 5 ? width : 5}%`,
-                        backgroundColor: recipeColors[task.recipe] || '#667eea',
-                        outline: selectedTask?.taskId === task.taskId ? '4px solid #fff' : 'none',
-                        outlineOffset: '2px',
-                        zIndex: selectedTask?.taskId === task.taskId ? '20' : '1'
-                      }}
-                      title={`${task.recipe} - ${task.taskName}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSelectedTask(task)
-                      }}
-                    >
-                      <div className="task-block-content">
-                        <div className="task-block-recipe">{task.recipe}</div>
-                        <div className="task-block-name">{task.taskName.replace(/_/g, ' ')}</div>
-                        <div className="task-block-time">{task.start}-{task.end}min</div>
+                    return (
+                      <div
+                        key={task.taskId || `${task.recipe}_${task.taskName}`}
+                        className={`task-block task-${taskState} ${selectedTask?.taskId === task.taskId ? 'selected' : ''}`}
+                        style={{
+                          left: `${left}%`,
+                          width: `${width}%`,
+                          minWidth: `${width > 5 ? width : 5}%`,
+                          top: `${top}px`,
+                          backgroundColor: recipeColors[task.recipe] || '#667eea',
+                          outline: selectedTask?.taskId === task.taskId ? '4px solid #fff' : 'none',
+                          outlineOffset: '2px',
+                          zIndex: selectedTask?.taskId === task.taskId ? '20' : layer + 1
+                        }}
+                        title={`${task.recipe} - ${task.taskName}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedTask(task)
+                        }}
+                      >
+                        <div className="task-block-content">
+                          <div className="task-block-recipe">{task.recipe}</div>
+                          <div className="task-block-name">{task.taskName.replace(/_/g, ' ')}</div>
+                          <div className="task-block-time">{task.start}-{task.end}min</div>
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
