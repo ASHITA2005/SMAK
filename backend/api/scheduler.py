@@ -36,14 +36,18 @@ def schedule_recipes(recipes: dict, selected_recipe_names: list[str]) -> list[di
 
     resource_limits = {"countertop": 5, "grill": 1, "stove": 3, "toaster": 1, "fryer": 2}
     resource_available = dict(resource_limits)
-
+    resource_layers = {k: [] for k in resource_limits.keys()}
     ready = {tid: tasks[tid] for tid, deg in indegree.items() if deg == 0}
     finish_q: list[tuple[float, str, dict]] = []
     schedule: dict[str, dict] = {}
     current_time = 0.0
 
     while ready or finish_q:
-        sorted_ready = sorted(ready.items(), key=lambda kv: -longest_path[kv[0]])
+        # Sort by longest path (descending), tie break with shortest duration (ascending)
+        sorted_ready = sorted(
+            ready.items(),
+            key=lambda kv: (-longest_path[kv[0]], float(kv[1]["duration"]))
+        )
         new_ready = {}
         scheduled_any = False
 
@@ -51,9 +55,20 @@ def schedule_recipes(recipes: dict, selected_recipe_names: list[str]) -> list[di
             res = task["resource"]
             if resource_available.get(res, 0) > 0:
                 resource_available[res] -= 1
-                finish_time = current_time + float(task["duration"])
+                duration = float(task["duration"])
+                finish_time = current_time + duration
                 finish_q.append((finish_time, task_id, task))
                 finish_q.sort(key=lambda x: x[0])
+
+                # Layout layers allocation
+                visual_layer = len(resource_layers[res])
+                for idx, layer_end in enumerate(resource_layers[res]):
+                    if layer_end <= current_time:
+                        visual_layer = idx
+                        resource_layers[res][idx] = finish_time
+                        break
+                else:
+                    resource_layers[res].append(finish_time)
 
                 recipe_name, task_key = task_id.split("_", 1)
                 schedule[task_id] = {
@@ -64,7 +79,8 @@ def schedule_recipes(recipes: dict, selected_recipe_names: list[str]) -> list[di
                     "recipe": recipe_name,
                     "taskKey": task_key,
                     "taskName": task.get("name"),
-                    "duration": float(task["duration"]),
+                    "duration": duration,
+                    "layer": visual_layer
                 }
                 scheduled_any = True
             else:
@@ -75,13 +91,18 @@ def schedule_recipes(recipes: dict, selected_recipe_names: list[str]) -> list[di
         if not scheduled_any:
             if not finish_q:
                 break
-            finish_time, done_task_id, done_task = finish_q.pop(0)
-            current_time = finish_time
-            resource_available[done_task["resource"]] += 1
-            for child in deps.get(done_task_id, []):
-                indegree[child] -= 1
-                if indegree[child] == 0:
-                    ready[child] = tasks[child]
+            
+            next_time = finish_q[0][0]
+            current_time = next_time
+            
+            # Flush all tasks concluding at this precise time
+            while finish_q and finish_q[0][0] == current_time:
+                _, done_task_id, done_task = finish_q.pop(0)
+                resource_available[done_task["resource"]] += 1
+                for child in deps.get(done_task_id, []):
+                    indegree[child] -= 1
+                    if indegree[child] == 0:
+                        ready[child] = tasks[child]
 
     return sorted(schedule.values(), key=lambda x: x["start"])
 

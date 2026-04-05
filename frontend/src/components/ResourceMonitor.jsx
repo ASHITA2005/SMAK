@@ -8,7 +8,6 @@ function ResourceMonitor({ sessionData: propSessionData }) {
   const location = useLocation()
   const [resources, setResources] = useState({})
   const [loading, setLoading] = useState(true)
-  const [currentTime, setCurrentTime] = useState(0)
 
   // Resource limits
   const resourceLimits = {
@@ -63,11 +62,12 @@ function ResourceMonitor({ sessionData: propSessionData }) {
         }
       })
 
-      // Count tasks that are currently active (start <= currentTime < end)
+      // Calculate peak concurrent tasks for the entire session
       schedule.forEach(task => {
-        if (task.start <= currentTime && currentTime < task.end) {
-          if (resourceUsage[task.resource]) {
-            resourceUsage[task.resource].used++
+        if (resourceUsage[task.resource]) {
+          const concurrent = (task.layer || 0) + 1;
+          if (concurrent > resourceUsage[task.resource].used) {
+            resourceUsage[task.resource].used = concurrent;
           }
         }
       })
@@ -85,43 +85,11 @@ function ResourceMonitor({ sessionData: propSessionData }) {
       setLoading(false)
     }
 
-    // Try to fetch from API first, fall back to calculation
-    api.getResources()
-      .then(response => {
-        setResources(response.data)
-        setLoading(false)
-      })
-      .catch(() => {
-        // Calculate from schedule
-        calculateResourceUsage()
-      })
-  }, [currentTime, propSessionData, location.state])
-
-  // Update current time periodically to simulate real-time monitoring
-  // Only update if there's an active session
-  useEffect(() => {
-    const sessionData = propSessionData || location.state?.sessionData || 
-      (() => {
-        const stored = sessionStorage.getItem('sessionData')
-        return stored ? JSON.parse(stored) : null
-      })()
-    
-    if (!sessionData || !sessionData.selectedRecipes) {
-      return // No active session, don't update time
-    }
-
-    const interval = setInterval(() => {
-      setCurrentTime(prev => {
-        // Get max time from schedule to stop at the end
-        const recipesData = api.getMockRecipes()
-        const schedule = scheduleRecipes(recipesData, sessionData.selectedRecipes)
-        const maxTime = schedule.length > 0 ? Math.max(...schedule.map(task => task.end)) : 0
-        return prev < maxTime ? prev + 1 : prev
-      })
-    }, 1000) // Update every second
-
-    return () => clearInterval(interval)
+    // Force calculating resource usage directly from timeline since this is an offline/SPA simulation
+    calculateResourceUsage()
   }, [propSessionData, location.state])
+
+  // Simulator timer removed for static peak display
 
   if (loading) {
     return <div className="loading">Loading resources...</div>
@@ -147,7 +115,7 @@ function ResourceMonitor({ sessionData: propSessionData }) {
     <div className="resource-monitor">
       <div className="monitor-header">
         <h1>Resource Monitor</h1>
-        <p className="subtitle">Real-time kitchen resource availability</p>
+        <p className="subtitle">Peak resource usage requirement for this session</p>
         {(() => {
           const sessionData = propSessionData || location.state?.sessionData || 
             (() => {
@@ -156,14 +124,12 @@ function ResourceMonitor({ sessionData: propSessionData }) {
             })()
           if (sessionData && sessionData.selectedRecipes) {
             const recipesData = api.getMockRecipes()
-            const schedule = scheduleRecipes(recipesData, sessionData.selectedRecipes)
+            const schedule = scheduleRecipes(recipesData, sessionData.selectedRecipes, sessionData.chefs)
             const maxTime = schedule.length > 0 ? Math.max(...schedule.map(task => task.end)) : 0
             return (
               <div className="time-display">
-                <span className="time-label">Current Time:</span>
-                <span className="time-value">{currentTime} min</span>
-                <span className="time-separator">/</span>
-                <span className="time-total">{maxTime} min</span>
+                <span className="time-label">Total Prep Duration:</span>
+                <span className="time-value">{maxTime} min</span>
               </div>
             )
           }

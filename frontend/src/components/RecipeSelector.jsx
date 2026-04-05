@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import api from '../services/api'
+import GroceryList from './GroceryList'
 import './RecipeSelector.css'
 
 const recipeIcons = {
@@ -20,6 +21,9 @@ const recipeIcons = {
 function RecipeSelector({ onStartSession }) {
   const [recipes, setRecipes] = useState({})
   const [selectedRecipes, setSelectedRecipes] = useState([])
+  const [step, setStep] = useState(1)
+  const [numChefs, setNumChefs] = useState(1)
+  const [chefNames, setChefNames] = useState(["Chef 1"])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -45,9 +49,25 @@ function RecipeSelector({ onStartSession }) {
     })
   }
 
+  const handleNumChefsChange = (e) => {
+    const num = Math.max(1, parseInt(e.target.value) || 1)
+    setNumChefs(num)
+    const newNames = [...chefNames]
+    while(newNames.length < num) newNames.push(`Chef ${newNames.length + 1}`)
+    setChefNames(newNames.slice(0, num))
+  }
+
+  const handleNameChange = (index, value) => {
+    const newNames = [...chefNames]
+    newNames[index] = value
+    setChefNames(newNames)
+  }
+
   const handleStartSession = () => {
-    if (selectedRecipes.length > 0) {
-      onStartSession(selectedRecipes)
+    if (selectedRecipes?.length > 0) {
+      const finalChefs = chefNames.map(n => n?.trim()).filter(n => n && n.length > 0)
+      if (finalChefs.length === 0) finalChefs.push("Default Chef")
+      onStartSession(selectedRecipes, finalChefs)
     }
   }
 
@@ -99,23 +119,77 @@ function RecipeSelector({ onStartSession }) {
         })}
       </div>
 
-      <div className="selector-footer">
-        <div className="selection-summary">
-          {selectedRecipes.length === 0 ? (
-            <span className="no-selection">No recipes selected</span>
-          ) : (
-            <span className="selection-count">
-              {selectedRecipes.length} recipe{selectedRecipes.length > 1 ? 's' : ''} selected
-            </span>
-          )}
-        </div>
-        <button
-          className="start-session-button"
-          onClick={handleStartSession}
-          disabled={selectedRecipes.length === 0}
-        >
-          Start Cooking Session
-        </button>
+      {selectedRecipes?.length > 0 && (
+        <GroceryList selectedRecipes={selectedRecipes} />
+      )}
+
+      <div className="selector-footer" style={{ padding: '20px', background: '#f8f9fa', borderRadius: '12px', marginTop: '20px' }}>
+        {step === 1 ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <div className="selection-summary">
+              {selectedRecipes?.length === 0 ? (
+                <span className="no-selection">No recipes selected</span>
+              ) : (
+                <span className="selection-count font-bold text-lg" style={{ color: '#2c3e50' }}>
+                  {selectedRecipes.length} recipe{selectedRecipes.length > 1 ? 's' : ''} selected
+                </span>
+              )}
+            </div>
+            <button
+              className="start-session-button"
+              onClick={() => setStep(2)}
+              disabled={selectedRecipes?.length === 0}
+              style={{ background: '#3498db', color: 'white', padding: '12px 24px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: selectedRecipes?.length === 0 ? 'not-allowed' : 'pointer' }}
+            >
+              Next: Assign Chefs ➜
+            </button>
+          </div>
+        ) : (
+          <div className="chef-setup-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h3 style={{ margin: '0 0 10px 0', color: '#2c3e50', fontSize: '1.2rem' }}>🧑‍🍳 Chef Assignment</h3>
+            
+            <label style={{ display: 'flex', alignItems: 'center', fontWeight: '600', color: '#34495e' }}>
+              How many people are cooking?
+              <input 
+                type="number" 
+                min="1" max="10" 
+                value={numChefs} 
+                onChange={handleNumChefsChange} 
+                style={{ marginLeft: '12px', padding: '8px 12px', width: '80px', borderRadius: '6px', border: '1px solid #cbd5e1' }} 
+              />
+            </label>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px', marginBottom: '16px' }}>
+              {chefNames.map((name, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ minWidth: '70px', color: '#64748b', fontWeight: '500' }}>Chef {idx + 1}:</span>
+                  <input 
+                    type="text"
+                    value={name}
+                    onChange={(e) => handleNameChange(idx, e.target.value)}
+                    placeholder="Enter name..."
+                    style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '10px' }}>
+              <button 
+                onClick={() => setStep(1)}
+                style={{ background: '#94a3b8', color: 'white', padding: '12px 24px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}
+              >
+                ⬅ Back
+              </button>
+              <button 
+                onClick={handleStartSession}
+                style={{ background: '#e11d48', color: 'white', padding: '12px 32px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(225, 29, 72, 0.3)' }}
+              >
+                🔥 Start Cooking Session
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

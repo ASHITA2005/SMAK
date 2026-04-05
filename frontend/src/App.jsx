@@ -5,6 +5,7 @@ import RecipeDetails from './components/RecipeDetails'
 import TaskScheduler from './components/TaskScheduler'
 import ResourceMonitor from './components/ResourceMonitor'
 import RecipeSelector from './components/RecipeSelector'
+import LiveCooking from './components/LiveCooking'
 import Login from './components/Login'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import api from './services/api'
@@ -25,8 +26,8 @@ function AppContent() {
   const { user, logout, isAuthenticated } = useAuth()
   const navigate = useNavigate()
 
-  const handleStartSession = (selectedRecipes) => {
-    const newSessionData = { selectedRecipes, timestamp: Date.now() }
+  const handleStartSession = (selectedRecipes, chefs) => {
+    const newSessionData = { selectedRecipes, chefs, timestamp: Date.now() }
     setSessionData(newSessionData)
     // Store in sessionStorage so ResourceMonitor can access it
     sessionStorage.setItem('sessionData', JSON.stringify(newSessionData))
@@ -69,6 +70,7 @@ function AppContent() {
           <Route path="/select" element={<ProtectedRoute><RecipeSelectorWrapper onStartSession={handleStartSession} /></ProtectedRoute>} />
           <Route path="/recipe/:recipeName" element={<ProtectedRoute><RecipeDetails /></ProtectedRoute>} />
           <Route path="/scheduler" element={<ProtectedRoute><TaskSchedulerWrapper sessionData={sessionData} /></ProtectedRoute>} />
+          <Route path="/live" element={<ProtectedRoute><LiveCooking sessionData={sessionData} /></ProtectedRoute>} />
           <Route path="/resources" element={<ProtectedRoute><ResourceMonitor sessionData={sessionData} /></ProtectedRoute>} />
         </Routes>
       </main>
@@ -89,8 +91,8 @@ function App() {
 function RecipeSelectorWrapper({ onStartSession }) {
   const navigate = useNavigate()
 
-  const handleStart = (selectedRecipes) => {
-    onStartSession(selectedRecipes)
+  const handleStart = (selectedRecipes, chefs) => {
+    onStartSession(selectedRecipes, chefs)
     navigate('/scheduler')
   }
 

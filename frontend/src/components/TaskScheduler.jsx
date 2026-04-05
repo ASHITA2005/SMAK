@@ -41,7 +41,7 @@ function TaskScheduler({ sessionData }) {
     if (sessionData && sessionData.selectedRecipes) {
       setSelectedRecipes(sessionData.selectedRecipes)
       const recipesData = api.getMockRecipes()
-      const generatedSchedule = scheduleRecipes(recipesData, sessionData.selectedRecipes)
+      const generatedSchedule = scheduleRecipes(recipesData, sessionData.selectedRecipes, sessionData.chefs)
       setSchedule(generatedSchedule)
       setCurrentTime(0) // Reset time when new session starts
       setIsPlaying(false) // Stop playback
@@ -61,7 +61,7 @@ function TaskScheduler({ sessionData }) {
         }
         return prev + 1
       })
-    }, 1000) // 1 second = 1 simulated minute
+    }, 4000) // 4 seconds = 1 simulated minute
 
     return () => clearInterval(interval)
   }, [isPlaying, schedule])
@@ -73,12 +73,12 @@ function TaskScheduler({ sessionData }) {
   if (!schedule || schedule.length === 0) {
     return (
       <div className="task-scheduler">
-        <div className="empty-scheduler">
-          <div className="empty-icon">📋</div>
-          <h1>No Active Session</h1>
-          <p>Select recipes to start a cooking session</p>
-          <button className="start-session-btn" onClick={handleStartNewSession}>
-            Start New Session
+        <div className="empty-scheduler flex flex-col items-center justify-center py-20 px-4">
+          <div className="empty-icon bg-slate-50 w-32 h-32 flex items-center justify-center rounded-full mb-6 shadow-sm border border-slate-100 text-6xl">📋</div>
+          <h1 className="text-3xl font-black text-slate-800 mb-2">No Active Session</h1>
+          <p className="text-slate-500 font-medium mb-8 text-lg">Select recipes to coordinate your kitchen workflow.</p>
+          <button className="start-session-btn bg-slate-800 hover:bg-slate-900 border border-slate-700 text-white font-black py-4 px-8 rounded-xl shadow-xl flex items-center gap-3 transform transition-all hover:-translate-y-1" onClick={handleStartNewSession}>
+            Set Up Your Kitchen ➜
           </button>
         </div>
       </div>
@@ -96,34 +96,9 @@ function TaskScheduler({ sessionData }) {
     return acc
   }, {})
 
-  // Function to assign layers to overlapping tasks
-  const assignLayers = (tasks) => {
-    if (!tasks || tasks.length === 0) return []
-    
-    // Sort tasks by start time
-    const sortedTasks = [...tasks].sort((a, b) => a.start - b.start)
-    
-    // Assign layer to each task
-    const layers = []
-    sortedTasks.forEach(task => {
-      let layer = 0
-      // Find the first available layer that doesn't overlap with existing tasks
-      while (layers.some(t => 
-        t.layer === layer && 
-        !(task.end <= t.task.start || task.start >= t.task.end)
-      )) {
-        layer++
-      }
-      layers.push({ task, layer })
-    })
-    
-    return layers
-  }
-
-  // Calculate maximum layers needed for each resource
   const getMaxLayers = (resource) => {
-    const layers = assignLayers(tasksByResource[resource])
-    return layers.length > 0 ? Math.max(...layers.map(l => l.layer)) + 1 : 1
+    const tasks = tasksByResource[resource] || []
+    return tasks.length > 0 ? Math.max(...tasks.map(t => t.layer || 0)) + 1 : 1
   }
 
   // Get task state based on current time
@@ -138,12 +113,43 @@ function TaskScheduler({ sessionData }) {
   return (
     <div className="task-scheduler">
       <div className="scheduler-header">
-        <h1>Optimized Cooking Schedule</h1>
-        <p className="subtitle">
-          {selectedRecipes.length > 0 && 
-            `Cooking: ${selectedRecipes.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ')}`
-          }
-        </p>
+        <div className="header-titles">
+          <h1 className="text-4xl font-black text-slate-800 tracking-tight">Optimized Cooking Schedule</h1>
+          <div className="recipe-tags">
+            {selectedRecipes.map(r => (
+               <span key={r} className="recipe-tag">
+                 {r.replace(/_/g, ' ')}
+               </span>
+            ))}
+          </div>
+        </div>
+        <div className="header-actions">
+          <div className="active-tasks-badge">
+            <h3>
+              Live Operations
+              <span className="live-indicator"></span>
+            </h3>
+           <ul>
+            {schedule?.filter(t => getTaskState(t) === 'active')?.length === 0 ? (
+               <li className="empty">Awaiting assignments...</li>
+            ) : (
+               schedule?.filter(t => getTaskState(t) === 'active').map(t => (
+                 <li key={t.taskId}>
+                   <div className="active-marker"></div>
+                   <span className="emoji">👉</span>
+                   <span className="task-text">{t.taskName?.replace(/_/g, ' ').toUpperCase()}</span>
+                 </li>
+               ))
+            )}
+          </ul>
+        </div>
+          <button 
+            onClick={() => navigate('/live')} 
+            className="start-live-btn"
+          >
+            <span className="icon">⚡</span> <span className="text">Start Live Mode</span>
+          </button>
+        </div>
       </div>
 
       <div className="timeline-controls">
@@ -213,7 +219,7 @@ function TaskScheduler({ sessionData }) {
         <div className="timeline-resources">
           {resources.map(resource => {
             const maxLayers = getMaxLayers(resource)
-            const taskLayers = assignLayers(tasksByResource[resource])
+            const trackTasks = tasksByResource[resource] || []
             const trackHeight = 60 + (maxLayers - 1) * 60
             
             return (
@@ -226,7 +232,7 @@ function TaskScheduler({ sessionData }) {
                     {resource === 'toaster' && '🍞'}
                     {resource === 'fryer' && '🍟'}
                   </span>
-                  <span className="resource-name">{resource}</span>
+                  <span className="resource-name font-black tracking-widest uppercase text-[10px] bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200">{resource}</span>
                 </div>
                 <div 
                   className="timeline-track" 
@@ -237,7 +243,8 @@ function TaskScheduler({ sessionData }) {
                     className="current-time-line"
                     style={{ left: `${(currentTime / maxTime) * 100}%` }}
                   />
-                  {taskLayers.map(({ task, layer }) => {
+                  {trackTasks.map((task) => {
+                    const layer = task.layer || 0;
                     const left = (task.start / maxTime) * 100
                     const width = ((task.end - task.start) / maxTime) * 100
                     const top = 8 + (layer * 60)
@@ -250,24 +257,33 @@ function TaskScheduler({ sessionData }) {
                         style={{
                           left: `${left}%`,
                           width: `${width}%`,
-                          minWidth: `${width > 5 ? width : 5}%`,
+                          minWidth: `14px`,
                           top: `${top}px`,
                           backgroundColor: recipeColors[task.recipe] || '#667eea',
                           outline: selectedTask?.taskId === task.taskId ? '4px solid #fff' : 'none',
                           outlineOffset: '2px',
                           zIndex: selectedTask?.taskId === task.taskId ? '20' : layer + 1
                         }}
-                        title={`${task.recipe} - ${task.taskName}`}
                         onClick={(e) => {
                           e.stopPropagation()
                           setSelectedTask(task)
                         }}
                       >
-                        <div className="task-block-content">
-                          <div className="task-block-recipe">{task.recipe}</div>
-                          <div className="task-block-name">{task.taskName.replace(/_/g, ' ')}</div>
-                          <div className="task-block-time">{task.start}-{task.end}min</div>
+                        {/* Always display tooltip unconditionally. CSS hover drives visibility. */}
+                        <div className="task-tooltip">
+                          <div className="font-black text-rose-400 uppercase text-[10px] tracking-widest mb-1">{task.recipe?.replace(/_/g, ' ')} • {task.duration}m</div>
+                          <div className="font-bold text-white text-lg mb-2">{task.taskName?.replace(/_/g, ' ').toUpperCase()}</div>
+                          <div className="bg-slate-800 text-slate-200 px-3 py-1.5 rounded-md inline-flex items-center gap-2 border border-slate-700 w-full justify-between">
+                            <span className="font-semibold text-xs tracking-wide">🧑‍🍳 {task.chef}</span>
+                            <span className="text-xs text-slate-400">{task.start}m ➜ {task.end}m</span>
+                          </div>
                         </div>
+
+                        {width > 6 && ( /* Only render internal string if width is sufficiently large (6% of timescale approx ~2-4m) */
+                          <div className="task-block-content truncate px-1">
+                             <div className="task-name truncate text-[11px] leading-tight opacity-90">{task.taskName?.replace(/_/g, ' ')}</div>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
