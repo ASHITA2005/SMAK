@@ -16,34 +16,15 @@ Before running the project, make sure you have the following installed:
 
 - **Python 3.8+** (for backend)
 - **Node.js 16+** and **npm** (for frontend)
-- **MongoDB** (running locally on `mongodb://127.0.0.1:27017`)
-
-### Installing MongoDB
-
-**Windows:**
-- Download from [MongoDB Community Server](https://www.mongodb.com/try/download/community)
-- Install and start MongoDB service
-
-**macOS:**
-```bash
-brew tap mongodb/brew
-brew install mongodb-community
-brew services start mongodb-community
-```
-
-**Linux:**
-```bash
-sudo apt-get install mongodb
-sudo systemctl start mongodb
-```
 
 ## Project Structure
 
 ```
 SMAK/
-├── backend/          # Flask backend API
-│   ├── app.py        # Main Flask application
-│   ├── recipes.py    # Recipe data
+├── backend/          # Django backend API (SQLite)
+│   ├── manage.py
+│   ├── smak_backend/
+│   ├── api/
 │   └── requirements.txt
 ├── frontend/         # React frontend
 │   ├── src/
@@ -79,9 +60,10 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. Make sure MongoDB is running:
-   - Check if MongoDB service is running
-   - Default connection: `mongodb://127.0.0.1:27017`
+4. Apply database migrations (SQLite):
+```bash
+python manage.py migrate
+```
 
 ### 2. Frontend Setup
 
@@ -97,30 +79,18 @@ npm install
 
 ## Running the Project
 
-### Step 1: Start MongoDB
-
-Make sure MongoDB is running on your system. You can verify by checking if the MongoDB service is active.
-
-### Step 2: Start the Backend Server
+### Step 1: Start the Backend Server
 
 Open a terminal and run:
 
 ```bash
 cd backend
-python app.py
-```
-
-You should see:
-```
-✓ MongoDB connection successful
- * Running on http://127.0.0.1:5000
+python manage.py runserver 0.0.0.0:5000
 ```
 
 The backend API will be available at `http://localhost:5000`
 
-**Note:** If you see a MongoDB connection error, make sure MongoDB is installed and running.
-
-### Step 3: Start the Frontend Development Server
+### Step 2: Start the Frontend Development Server
 
 Open a **new terminal** (keep the backend running) and run:
 
@@ -163,19 +133,11 @@ The frontend will be available at `http://localhost:3000`
 
 ### Backend Issues
 
-**MongoDB Connection Error:**
-```
-✗ MongoDB connection error: ...
-```
-- Make sure MongoDB is installed and running
-- Check if MongoDB service is active
-- Verify connection string: `mongodb://127.0.0.1:27017`
-
 **Port Already in Use:**
-- If port 5000 is already in use, change it in `backend/app.py`:
-  ```python
-  app.run(debug=True, port=5001)  # Change to different port
-  ```
+- If port 5000 is already in use, run Django on a different port:
+```bash
+python manage.py runserver 0.0.0.0:5001
+```
 
 ### Frontend Issues
 
@@ -195,7 +157,7 @@ The frontend will be available at `http://localhost:3000`
 ### General Issues
 
 **CORS Errors:**
-- The backend has CORS enabled, but if you see CORS errors, check `backend/app.py` for CORS configuration
+- The backend has CORS enabled, but if you see CORS errors, check `backend/smak_backend/settings.py`
 
 **Module Not Found:**
 - Backend: Make sure you've activated the virtual environment and installed requirements
@@ -243,10 +205,10 @@ gunicorn -w 4 -b 0.0.0.0:5000 app:app
 ## Technologies Used
 
 ### Backend
-- Flask - Web framework
-- MongoDB - Database
-- PyMongo - MongoDB driver
-- Flask-CORS - CORS support
+- Django - Web framework
+- Django REST Framework - API
+- SQLite - Database
+- django-cors-headers - CORS support
 
 ### Frontend
 - React 18 - UI library

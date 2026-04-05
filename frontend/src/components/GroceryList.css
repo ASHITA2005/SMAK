@@ -1,0 +1,111 @@
+.grocery-list-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+  padding: 24px;
+  margin: 32px 0;
+  border: 1px solid #f0f0f0;
+}
+
+.grocery-list-header {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.grocery-list-subtitle {
+  color: #7f8c8d;
+  font-size: 0.95rem;
+  margin-bottom: 24px;
+}
+
+.grocery-list-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.grocery-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #eee;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.grocery-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+  border-color: #3498db;
+}
+
+.grocery-item-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.grocery-checkbox {
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  accent-color: #3498db;
+}
+
+.grocery-item-name {
+  font-weight: 600;
+  color: #34495e;
+  font-size: 1.05rem;
+}
+
+.grocery-item-sources {
+  font-size: 0.8rem;
+  color: #95a5a6;
+  margin-top: 4px;
+}
+
+.grocery-item-amount {
+  background: #e1f0fa;
+  color: #2980b9;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.grocery-list-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.grocery-print-btn {
+  background: transparent;
+  border: 2px solid #3498db;
+  color: #3498db;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.grocery-print-btn:hover {
+  background: #3498db;
+  color: white;
+}

@@ -1,6 +1,7 @@
 // Scheduling algorithm based on main.py logic
 
-export function scheduleRecipes(recipes, selectedRecipeNames) {
+export function scheduleRecipes(recipes, selectedRecipeNames, chefs = []) {
+  if (chefs.length === 0) chefs = ["Default Chef"]
   // Filter recipes to only selected ones
   const selectedRecipes = {}
   selectedRecipeNames.forEach(name => {
@@ -76,7 +77,11 @@ export function scheduleRecipes(recipes, selectedRecipeNames) {
   // Schedule
   const schedule = {}
   let ready = {}
-  
+
+  // Layer tracking per resource
+  const resourceLayers = {}
+  Object.keys(resourceLimits).forEach(res => { resourceLayers[res] = [] })
+
   // Initialize ready queue with tasks that have no dependencies
   for (const taskId in tasks) {
     if (indegree[taskId] === 0) {
@@ -87,11 +92,17 @@ export function scheduleRecipes(recipes, selectedRecipeNames) {
   // Priority queue for finishing tasks: [finishTime, taskId, taskInfo]
   const finishQueue = []
   let currentTime = 0
+  let chefIndex = 0
 
   while (Object.keys(ready).length > 0 || finishQueue.length > 0) {
-    // Sort ready tasks by longest remaining path (priority) - descending order
+    // Sort ready tasks by longest remaining path (descending)
+    // Secondary sort: Shortest duration task first if paths are tied
     const sortedReady = Object.entries(ready)
-      .sort((a, b) => longestPath[b[0]] - longestPath[a[0]])
+      .sort((a, b) => {
+        const pathDiff = longestPath[b[0]] - longestPath[a[0]]
+        if (pathDiff !== 0) return pathDiff
+        return a[1].duration - b[1].duration
+      })
 
     const newReady = {}
     let scheduled = false
@@ -99,14 +110,25 @@ export function scheduleRecipes(recipes, selectedRecipeNames) {
     // Try to schedule ready tasks
     for (const [taskId, task] of sortedReady) {
       if (resourceAvailable[task.resource] > 0) {
-        // Resource available, schedule the task
         resourceAvailable[task.resource]--
         const finishTime = currentTime + task.duration
         
-        // Add to finish queue (maintained as min-heap by sorting)
         finishQueue.push([finishTime, taskId, task])
         finishQueue.sort((a, b) => a[0] - b[0])
         
+        // Calculate visual Gantt Layer safely
+        const layersActive = resourceLayers[task.resource]
+        let layerObj = layersActive.find(l => l.endTime <= currentTime)
+        let visualLayer = 0
+        if (!layerObj) {
+            visualLayer = layersActive.length
+            layerObj = { endTime: finishTime, layerIndex: visualLayer }
+            layersActive.push(layerObj)
+        } else {
+            visualLayer = layerObj.layerIndex
+            layerObj.endTime = finishTime
+        }
+
         const [recipeName, taskKey] = taskId.split('_')
         schedule[taskId] = {
           taskId: taskId,
@@ -116,38 +138,39 @@ export function scheduleRecipes(recipes, selectedRecipeNames) {
           recipe: recipeName,
           taskKey: taskKey,
           taskName: task.name,
-          duration: task.duration
+          duration: task.duration,
+          layer: visualLayer,
+          chef: chefs[chefIndex % chefs.length]
         }
+        chefIndex++;
         scheduled = true
       } else {
-        // Resource not available, keep in ready queue
         newReady[taskId] = task
       }
     }
 
     ready = newReady
 
-    // If nothing was scheduled, advance time to next task completion
+    // Advance time strictly when nothing could be mapped
     if (!scheduled) {
-      if (finishQueue.length === 0) {
-        break
-      }
-
-      const [finishTime, doneTaskId, doneTask] = finishQueue.shift()
-      currentTime = finishTime
+      if (finishQueue.length === 0) break
       
-      // Release resource
-      resourceAvailable[doneTask.resource]++
-
-      // Update indegree of children (tasks that this task enables)
-      for (const child of deps[doneTaskId]) {
-        indegree[child]--
-        if (indegree[child] === 0) {
-          ready[child] = tasks[child]
-        }
+      const nextTime = finishQueue[0][0]
+      currentTime = nextTime
+      
+      // Pop all tasks finishing at this exact nextTime
+      while (finishQueue.length > 0 && finishQueue[0][0] === currentTime) {
+         const [finishTime, doneTaskId, doneTask] = finishQueue.shift()
+         resourceAvailable[doneTask.resource]++
+         
+         for (const child of deps[doneTaskId]) {
+           indegree[child]--
+           if (indegree[child] === 0) {
+             ready[child] = tasks[child]
+           }
+         }
       }
     }
-    // If scheduled, continue to next iteration to try scheduling more tasks
   }
 
   // Convert schedule object to array
